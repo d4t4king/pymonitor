@@ -3,13 +3,21 @@
 import psutil
 import socket
 import smtplib
+import argparse
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+parser = argparse.ArgumentParser(description="Monitor vital system resources and report at critical threasholds.")
+#parser.add_argument('-h', '--help', help="Display this useful message then exits.")
+parser.add_argument('-v', '--verbose', dest='verbosity', action='store_true', default=False, help="Displays more verbose output.")
+parser.add_argument('-o', '--opmode', dest='opmode', help="normal or verbose: normal alerts at threashold while verbose alerts at runtime.")
+args = parser.parse_args()
+
 # verbose mode will send a message everytime the script runs
 # normal mode will only send messages when threshold is met
-opmode = 'normal'
+opmode = args.opmode or 'normal'
 #opmode = 'verbose'
+
 pcts = list()
 hostname = socket.gethostname()
 
