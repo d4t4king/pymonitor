@@ -7,19 +7,22 @@ import argparse
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+pcts = list()
+hostname = socket.gethostname()
+default_sender = socket.getfqdn().replace('.', '@', 1)
+
 parser = argparse.ArgumentParser(description="Monitor vital system resources and report at critical threasholds.")
 #parser.add_argument('-h', '--help', help="Display this useful message then exits.")
 parser.add_argument('-v', '--verbose', dest='verbosity', action='store_true', default=False, help="Displays more verbose output.")
-parser.add_argument('-o', '--opmode', dest='opmode', help="normal or verbose: normal alerts at threashold while verbose alerts at runtime.")
+parser.add_argument('-o', '--opmode', dest='opmode', choices=['verbose', 'normal'], default='normal', help="normal or verbose: normal alerts at threashold while verbose alerts at runtime.")
+parser.add_argument('--to', dest='mailto', required=True, help="to whom alert messages should be sent")
+parser.add_argument('--from', dest='mailfrom', default=default_sender, help="the sender of the alerts; if left out, will be calculated from FQDN")
+parser.add_argument('-s', '--smtp', dest='smtpserver', required=True, help="the smtp server to use (required)")
 args = parser.parse_args()
 
 # verbose mode will send a message everytime the script runs
 # normal mode will only send messages when threshold is met
-opmode = args.opmode or 'normal'
-#opmode = 'verbose'
-
-pcts = list()
-hostname = socket.gethostname()
+opmode = args.opmode
 
 for x in range(5):
 	pcts.append(psutil.cpu_percent(interval=1))
@@ -28,8 +31,8 @@ avg = sum(pcts) / len(pcts)
 
 print("Average CPU Usage Percent over last 5 seconds: " + str(avg))
 
-me = 'ag478028@sempra.com'
-you = 'cheselton@sempra.com'
+me = args.mailfrom
+you = args.mailto or socket.getfqdn().replace('.', '@', 1)
 
 msg = MIMEMultipart('alternative')
 msg['From'] = me
@@ -67,7 +70,7 @@ msg.attach(part1)
 msg.attach(part2)
 
 if opmode == 'verbose' or (opmode == 'normal' and avg >= 30.0):
-	s = smtplib.SMTP('smtp.sempra.com')
+	s = smtplib.SMTP(args.smtpserver)
 	s.sendmail(me, you, msg.as_string())
 	s.quit()
 
