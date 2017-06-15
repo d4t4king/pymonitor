@@ -28,6 +28,9 @@ for x in range(5):
 	pcts.append(psutil.cpu_percent(interval=1))
 
 avg = sum(pcts) / len(pcts)
+mem_pct = psutil.virtual_memory().percent
+
+swap_pct =  psutil.swap_memory().percent
 
 print("Average CPU Usage Percent over last 5 seconds: " + str(avg))
 
@@ -40,25 +43,27 @@ msg['To'] = you
 
 if opmode == 'verbose':
 	msg['Subject'] = "CPU Status for " + hostname
-	text = "Status:\nAverage CPU Usage Percent over last 5 seconds: " + str(avg) + "\n"
+	text = "Status:\nAverage CPU Usage Percent over last 5 seconds: " + str(avg) + "\n[Mem: " + str(mem_pct) + "; Swap: " + str(swap_pct) + "]\n"
 	html = """\
 <html>
 	<head><title>CPU Status for %(hostname)s</title></head>
 	<body>
 		<h1>Status</h1>
 		<p>Average CPU Usage Percent over last 5 seconds: %(avg)s</p>
+		<p>[Mem Used: %(mem_pct)s%%; Swap Used: %(swap_pct)s%%]</p>
 	</body>
 </html>
 """ % locals()
 elif opmode == 'normal':
 	msg['Subject'] = "CPU Warning for " + hostname
-	text = "WARNING:\nAverage CPU Usage Percent over the last 5 seconds: " + str(avg) + "\n"
+	text = "WARNING:\nAverage CPU Usage Percent over the last 5 seconds: " + str(avg) + "\nMem: " + str(mem_pct) + "; Swap: " + str(swap_pct) + "]\n"
 	html = """\
 <html>
 	<head><title>CPU Status for %(hostname)s</title><head>
 	<body>
 		<h1>WARNING!</h1>
 		<p>Average CPU Usage Percent over last 5 seconds: %(avg)s</p>
+		<p>[Mem Used: %(mem_pct)s%%; Swap Used: %(swap_pct)s%%]</p>
 	</body>
 </html>
 """ % locals()
