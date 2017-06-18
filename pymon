@@ -39,10 +39,15 @@ print("Average CPU Usage Percent over last 5 seconds: " + str(avg))
 print("[Memory Used: " + str(mem_pct) + "%]")
 print("[Swap Used: " + str(swap_pct) + "%]")
 
+mailtemps = ''
 if temps:
 	if temps['coretemp']:
 		for t in temps['coretemp']:
 			print("[" + t.label + ": " + str(t.current) + "]")
+			if mailtemps:
+				mailtemps = mailtemps + "[" + t.label + ": " + str(t.current) + "]\n"
+			else:
+				mailtemps = "[" + t.label + ": " + str(t.current) + "]\n"
 	else:
 		pp.pprint(temps)
 else:
@@ -64,6 +69,8 @@ if args.mailto and args.smtpserver:
 	if opmode == 'verbose':
 		msg['Subject'] = "CPU Status for " + hostname
 		text = "Status:\nAverage CPU Usage Percent over last 5 seconds: " + str(avg) + "\n[Mem: " + str(mem_pct) + "; Swap: " + str(swap_pct) + "]\n"
+		if mailtemps:
+			text = text + mailtemps + "\n"
 		html = """\
 <html>
 	<head><title>CPU Status for %(hostname)s</title></head>
@@ -71,12 +78,15 @@ if args.mailto and args.smtpserver:
 		<h1>Status</h1>
 		<p>Average CPU Usage Percent over last 5 seconds: %(avg)s</p>
 		<p>[Mem Used: %(mem_pct)s%%; Swap Used: %(swap_pct)s%%]</p>
+		<p>%(mailtemps)s</p>
 	</body>
 </html>
 """ % locals()
 	elif opmode == 'normal':
 		msg['Subject'] = "CPU Warning for " + hostname
 		text = "WARNING:\nAverage CPU Usage Percent over the last 5 seconds: " + str(avg) + "\nMem: " + str(mem_pct) + "; Swap: " + str(swap_pct) + "]\n"
+		if mailtemps:
+			text = text + mailtemps + "\n"
 		html = """\
 <html>
 	<head><title>CPU Status for %(hostname)s</title><head>
@@ -84,6 +94,7 @@ if args.mailto and args.smtpserver:
 		<h1>WARNING!</h1>
 		<p>Average CPU Usage Percent over last 5 seconds: %(avg)s</p>
 		<p>[Mem Used: %(mem_pct)s%%; Swap Used: %(swap_pct)s%%]</p>
+		<p>%{mailtemps}s</p>
 	</body>
 </html>
 """ % locals()
