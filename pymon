@@ -15,9 +15,9 @@ parser = argparse.ArgumentParser(description="Monitor vital system resources and
 #parser.add_argument('-h', '--help', help="Display this useful message then exits.")
 parser.add_argument('-v', '--verbose', dest='verbosity', action='store_true', default=False, help="Displays more verbose output.")
 parser.add_argument('-o', '--opmode', dest='opmode', choices=['verbose', 'normal'], default='normal', help="normal or verbose: normal alerts at threashold while verbose alerts at runtime.")
-parser.add_argument('--to', dest='mailto', required=True, help="to whom alert messages should be sent")
+parser.add_argument('--to', dest='mailto', help="to whom alert messages should be sent")
 parser.add_argument('--from', dest='mailfrom', default=default_sender, help="the sender of the alerts; if left out, will be calculated from FQDN")
-parser.add_argument('-s', '--smtp', dest='smtpserver', required=True, help="the smtp server to use (required)")
+parser.add_argument('-s', '--smtp', dest='smtpserver', help="the smtp server to use (required)")
 args = parser.parse_args()
 
 # verbose mode will send a message everytime the script runs
@@ -33,18 +33,21 @@ mem_pct = psutil.virtual_memory().percent
 swap_pct =  psutil.swap_memory().percent
 
 print("Average CPU Usage Percent over last 5 seconds: " + str(avg))
+print("[Memory Used: " + str(mem_pct) + "]")
+print("[Swap Used: " + str(swap_pct) + "]")
 
-me = args.mailfrom
-you = args.mailto or socket.getfqdn().replace('.', '@', 1)
+if args.mailto and args.smtpserver:
+	me = args.mailfrom
+	you = args.mailto or socket.getfqdn().replace('.', '@', 1)
 
-msg = MIMEMultipart('alternative')
-msg['From'] = me
-msg['To'] = you
+	msg = MIMEMultipart('alternative')
+	msg['From'] = me
+	msg['To'] = you
 
-if opmode == 'verbose':
-	msg['Subject'] = "CPU Status for " + hostname
-	text = "Status:\nAverage CPU Usage Percent over last 5 seconds: " + str(avg) + "\n[Mem: " + str(mem_pct) + "; Swap: " + str(swap_pct) + "]\n"
-	html = """\
+	if opmode == 'verbose':
+		msg['Subject'] = "CPU Status for " + hostname
+		text = "Status:\nAverage CPU Usage Percent over last 5 seconds: " + str(avg) + "\n[Mem: " + str(mem_pct) + "; Swap: " + str(swap_pct) + "]\n"
+		html = """\
 <html>
 	<head><title>CPU Status for %(hostname)s</title></head>
 	<body>
@@ -54,10 +57,10 @@ if opmode == 'verbose':
 	</body>
 </html>
 """ % locals()
-elif opmode == 'normal':
-	msg['Subject'] = "CPU Warning for " + hostname
-	text = "WARNING:\nAverage CPU Usage Percent over the last 5 seconds: " + str(avg) + "\nMem: " + str(mem_pct) + "; Swap: " + str(swap_pct) + "]\n"
-	html = """\
+	elif opmode == 'normal':
+		msg['Subject'] = "CPU Warning for " + hostname
+		text = "WARNING:\nAverage CPU Usage Percent over the last 5 seconds: " + str(avg) + "\nMem: " + str(mem_pct) + "; Swap: " + str(swap_pct) + "]\n"
+		html = """\
 <html>
 	<head><title>CPU Status for %(hostname)s</title><head>
 	<body>
@@ -68,15 +71,16 @@ elif opmode == 'normal':
 </html>
 """ % locals()
 
-part1 = MIMEText(text, 'plain')
-part2 = MIMEText(html, 'html')
+	part1 = MIMEText(text, 'plain')
+	part2 = MIMEText(html, 'html')
 
-msg.attach(part1)
-msg.attach(part2)
+	msg.attach(part1)
+	msg.attach(part2)
 
-if opmode == 'verbose' or (opmode == 'normal' and avg >= 30.0):
-	s = smtplib.SMTP(args.smtpserver)
-	s.sendmail(me, you, msg.as_string())
-	s.quit()
+	if opmode == 'verbose' or (opmode == 'normal' and avg >= 30.0):
+		s = smtplib.SMTP(args.smtpserver)
+		s.sendmail(me, you, msg.as_string())
+		s.quit()
 
-
+else:
+	print("Recipient and mail server not supplied.  Skipping mail notice.")
