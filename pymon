@@ -75,7 +75,7 @@ if temps:
 				cprint("[" + t.label + ": " + str(t.current) + "]", 'red')
 			elif t.current < 70.0 and t.current >= 60.0:
 				cprint("[" + t.label + ": " + str(t.current) + "]", 'yellow')
-			elif t.current < 60.0 and t.current >= 50.0:
+			elif t.current < 60.0 and t.current >= 45.0:
 				cprint("[" + t.label + ": " + str(t.current) + "]", 'yellow', attrs=['bold'])
 			else:
 				print("[" + t.label + ": " + str(t.current) + "]")
