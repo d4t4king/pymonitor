@@ -7,6 +7,7 @@ import argparse
 import pprint
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from termcolor import colored,cprint
 
 pp = pprint.PrettyPrinter(indent=4)
 pcts = list()
@@ -31,33 +32,80 @@ for x in range(5):
 
 avg = sum(pcts) / len(pcts)
 mem_pct = psutil.virtual_memory().percent
-swap_pct =  psutil.swap_memory().percent
+swap_pct = psutil.swap_memory().percent
 temps = psutil.sensors_temperatures()
 fans = psutil.sensors_fans()
 
-print("Average CPU Usage Percent over last 5 seconds: " + str(avg))
-print("[Memory Used: " + str(mem_pct) + "%]")
-print("[Swap Used: " + str(swap_pct) + "%]")
+cprint("CPU: ", 'green', attrs=['bold'])
+if avg >= 90.0:
+	cprint("Average CPU Usage Percent over last 5 seconds: " + str(avg), 'red')
+elif avg < 90.0 and avg >= 75.0:
+	cprint("Average CPU Usage Percent over last 5 seconds: " + str(avg), 'yellow')
+elif avg < 75.0 and avg >= 50.0:
+	cprint("Average CPU Usage Percent over last 5 seconds: " + str(avg), 'yellow', attrs=['bold'])
+else:
+	print("Average CPU Usage Percent over last 5 seconds: " + str(avg))
+
+cprint("Memory: ", "green", attrs=['bold'])
+if mem_pct >= 90.0:
+	cprint("[Memory Used: " + str(mem_pct) + "%]", 'red')
+elif mem_pct < 90.0 and mem_pct >= 75.0:
+	cprint("[Memory Used: " + str(mem_pct) + "%]", 'yellow')
+elif mem_pct < 75.0 and mem_pct >= 50.0:
+	cprint("[Memory Used: " + str(mem_pct) + "%]", 'yellow', attrs=['bold'])
+else:
+	print("[Memory Used: " + str(mem_pct) + "%]")
+
+cprint("Swap: ", "green", attrs=['bold'])
+if swap_pct >= 90.0:
+	cprint("[Swap Used: " + str(swap_pct) + "%]", 'red')
+elif swap_pct < 90.0 and swap_pct >= 75.0:
+	cprint("[Swap Used: " + str(swap_pct) + "%]", 'yellow')
+elif swap_pct < 75.0 and swap_pct >= 50.0:
+	cprint("[Swap Used: " + str(swap_pct) + "%]", 'yellow', attrs=['bold'])
+else:
+	print("[Swap Used: " + str(swap_pct) + "%]")
 
 mailtemps = ''
+cprint("Temp Sensors: ", "green", attrs=['bold'])
 if temps:
 	if temps['coretemp']:
 		for t in temps['coretemp']:
-			print("[" + t.label + ": " + str(t.current) + "]")
+			if t.current > 70.0:
+				cprint("[" + t.label + ": " + str(t.current) + "]", 'red')
+			elif t.current < 70.0 and t.current >= 60.0:
+				cprint("[" + t.label + ": " + str(t.current) + "]", 'yellow')
+			elif t.current < 60.0 and t.current >= 50.0:
+				cprint("[" + t.label + ": " + str(t.current) + "]", 'yellow', attrs=['bold'])
+			else:
+				print("[" + t.label + ": " + str(t.current) + "]")
+
 			if mailtemps:
 				mailtemps = mailtemps + "[" + t.label + ": " + str(t.current) + "]\n"
 			else:
 				mailtemps = "[" + t.label + ": " + str(t.current) + "]\n"
+	elif temps['applesmc']:
+		for t in temps['applesmc']:
+			print("[" + t.label + ": " + str(t.current) + "]")
 	else:
 		pp.pprint(temps)
 else:
 	print("No sensor data for temps.")
 
+mailfans = ''
+cprint("Fan Sensors: ", "green", attrs=['bold'])
 if fans:
-	pp.pprint(fans)
+	if fans['applesmc']:
+		for f in fans['applesmc']:
+			print("[" + f.label + ": " + str(f.current) + "]")
+	else:
+		pp.pprint(fans)
 else:
 	print("No sensor data for fans.")
 
+##########
+# mail section
+#########
 if args.mailto and args.smtpserver:
 	me = args.mailfrom
 	you = args.mailto or socket.getfqdn().replace('.', '@', 1)
