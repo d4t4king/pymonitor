@@ -4,9 +4,11 @@ import psutil
 import socket
 import smtplib
 import argparse
+import pprint
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+pp = pprint.PrettyPrinter(indent=4)
 pcts = list()
 hostname = socket.gethostname()
 default_sender = socket.getfqdn().replace('.', '@', 1)
@@ -29,12 +31,27 @@ for x in range(5):
 
 avg = sum(pcts) / len(pcts)
 mem_pct = psutil.virtual_memory().percent
-
 swap_pct =  psutil.swap_memory().percent
+temps = psutil.sensors_temperatures()
+fans = psutil.sensors_fans()
 
 print("Average CPU Usage Percent over last 5 seconds: " + str(avg))
-print("[Memory Used: " + str(mem_pct) + "]")
-print("[Swap Used: " + str(swap_pct) + "]")
+print("[Memory Used: " + str(mem_pct) + "%]")
+print("[Swap Used: " + str(swap_pct) + "%]")
+
+if temps:
+	if temps['coretemp']:
+		for t in temps['coretemp']:
+			print("[" + t.label + ": " + str(t.current) + "]")
+	else:
+		pp.pprint(temps)
+else:
+	print("No sensor data for temps.")
+
+if fans:
+	pp.pprint(fans)
+else:
+	print("No sensor data for fans.")
 
 if args.mailto and args.smtpserver:
 	me = args.mailfrom
