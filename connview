@@ -1,0 +1,16 @@
+#!/usr/bin/env python
+
+import psutil
+import pprint
+
+pp = pprint.PrettyPrinter(indent=4)
+
+# loop thru the interfaces
+ifstats = psutil.net_if_stats();
+
+for i in ifstats:
+	print(i + ": UP=" + str(ifstats[i].isup) + " Speed=" + str(ifstats[i].speed))
+
+# show NIC stats
+# show NIC counters in table(?)
+# show connections
