@@ -8,9 +8,16 @@ pp = pprint.PrettyPrinter(indent=4)
 # loop thru the interfaces
 ifstats = psutil.net_if_stats();
 
-for i in ifstats:
-	print(i + ": UP=" + str(ifstats[i].isup) + " Speed=" + str(ifstats[i].speed))
-
+for i in sorted(ifstats):
+	print('{0:7s}\t{1:9s} {2:11s}').format(i + ":", "UP=" + str(ifstats[i].isup), " Speed=" + str(ifstats[i].speed))
+	
 # show NIC stats
 # show NIC counters in table(?)
-# show connections
+# show connections\
+conns = psutil.net_connections()
+print ("Left Address\tRight Address\tStatus\tPID")
+for c in conns:
+	#print(str(c.laddr) + "\t" + str(c.raddr) + "\t" + c.status + "\t" + str(c.pid))
+	print(str(c.laddr) + " == " + str(type(c.laddr)))
+
+
