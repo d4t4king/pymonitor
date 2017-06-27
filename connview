@@ -2,22 +2,27 @@
 
 import psutil
 import pprint
+import termcolor
+from termcolor import colored,cprint
 
 pp = pprint.PrettyPrinter(indent=4)
 
 # loop thru the interfaces
 ifstats = psutil.net_if_stats();
 
+# show NIC stats
 for i in sorted(ifstats):
 	print('{0:7s}\t{1:9s} {2:11s}').format(i + ":", "UP=" + str(ifstats[i].isup), " Speed=" + str(ifstats[i].speed))
-	
-# show NIC stats
+
+print('========================================================================')
+
 # show NIC counters in table(?)
 # show connections\
 conns = psutil.net_connections()
-print ("Left Address\tRight Address\tStatus\tPID")
+heads = ["Left Address", "Left Port", "Right Address", "Right Port", "Status", "PID"]
+print('{0:<24s}\t{1:<9s}\t{2:<24s}\t{3:<11s}\t{4:<12s}\t{5:<5s}').format("Left Address", "Left Port", "Right Address", "Right Port", "Status", "PID")
 for c in conns:
-	#print(str(c.laddr) + "\t" + str(c.raddr) + "\t" + c.status + "\t" + str(c.pid))
-	print(str(c.laddr) + " == " + str(type(c.laddr)))
-
-
+	if c.raddr:
+		print('{0:<24s}\t{1:<9s}\t{2:<24s}\t{3:<11s}\t{4:<12s}\t{5:<5s}').format(c.laddr[0], str(c.laddr[1]), c.raddr[0], str(c.raddr[1]), c.status, str(c.pid))
+	else:
+		print('{0:<24s}\t{1:<9s}\t{2:<24s}\t{3:<11s}\t{4:<12s}\t{5:<5s}').format(c.laddr[0], str(c.laddr[1]), "NA", "NA", c.status, str(c.pid))
