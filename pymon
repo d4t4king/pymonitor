@@ -111,8 +111,11 @@ else:
 mailfans = ''
 cprint("Fan Sensors: ", "green", attrs=['bold'])
 if fans:
-	if fans['applesmc']:
+	if 'applesmc' in fans:
 		for f in fans['applesmc']:
+			print("[" + f.label + ": " + str(f.current) + "]")
+	elif 'thinkpad' in fans:
+		for f in fans['thinkpad']:
 			print("[" + f.label + ": " + str(f.current) + "]")
 	else:
 		pp.pprint(fans)
