@@ -53,33 +53,33 @@ fans = psutil.sensors_fans()
 print_c('CPU: ', 'green')
 
 if avg >= 90.0:
-	cprint("Average CPU Usage Percent over last 5 seconds: " + str(avg), 'red')
+	print_c("Average CPU Usage Percent over last 5 seconds: " + str(avg), 'red')
 elif avg < 90.0 and avg >= 75.0:
-	cprint("Average CPU Usage Percent over last 5 seconds: " + str(avg), 'yellow')
+	print_c("Average CPU Usage Percent over last 5 seconds: " + str(avg), 'yellow')
 elif avg < 75.0 and avg >= 50.0:
-	cprint("Average CPU Usage Percent over last 5 seconds: " + str(avg), 'yellow', attrs=['bold'])
+	print_c("Average CPU Usage Percent over last 5 seconds: " + str(avg), 'yellow')
 else:
-	print("Average CPU Usage Percent over last 5 seconds: " + str(avg))
+	print_c("Average CPU Usage Percent over last 5 seconds: " + str(avg), "")
 
 print_c("Memory: ", "green")
 if mem_pct >= 90.0:
-	cprint("[Memory Used: " + str(mem_pct) + "%]", 'red')
+	print_c("[Memory Used: " + str(mem_pct) + "%]", 'red')
 elif mem_pct < 90.0 and mem_pct >= 75.0:
-	cprint("[Memory Used: " + str(mem_pct) + "%]", 'yellow')
+	print_c("[Memory Used: " + str(mem_pct) + "%]", 'yellow')
 elif mem_pct < 75.0 and mem_pct >= 50.0:
-	cprint("[Memory Used: " + str(mem_pct) + "%]", 'yellow', attrs=['bold'])
+	print_c("[Memory Used: " + str(mem_pct) + "%]", 'yellow')
 else:
-	print("[Memory Used: " + str(mem_pct) + "%]")
+	print_c("[Memory Used: " + str(mem_pct) + "%]", "")
 
 print_c("Swap: ", "green")
 if swap_pct >= 90.0:
-	cprint("[Swap Used: " + str(swap_pct) + "%]", 'red')
+	print_c("[Swap Used: " + str(swap_pct) + "%]", 'red')
 elif swap_pct < 90.0 and swap_pct >= 75.0:
-	cprint("[Swap Used: " + str(swap_pct) + "%]", 'yellow')
+	print_c("[Swap Used: " + str(swap_pct) + "%]", 'yellow')
 elif swap_pct < 75.0 and swap_pct >= 50.0:
-	cprint("[Swap Used: " + str(swap_pct) + "%]", 'yellow', attrs=['bold'])
+	print_c("[Swap Used: " + str(swap_pct) + "%]", 'yellow')
 else:
-	print("[Swap Used: " + str(swap_pct) + "%]")
+	print_c("[Swap Used: " + str(swap_pct) + "%]", "")
 
 mailtemps = ''
 print_c("Temp Sensors: ", "green")
@@ -87,13 +87,13 @@ if temps:
 	if temps['coretemp']:
 		for t in temps['coretemp']:
 			if t.current > 70.0:
-				cprint("[" + t.label + ": " + str(t.current) + "]", 'red')
+				print_c("[" + t.label + ": " + str(t.current) + "]", 'red')
 			elif t.current < 70.0 and t.current >= 60.0:
-				cprint("[" + t.label + ": " + str(t.current) + "]", 'yellow')
+				print_c("[" + t.label + ": " + str(t.current) + "]", 'yellow')
 			elif t.current < 60.0 and t.current >= 45.0:
-				cprint("[" + t.label + ": " + str(t.current) + "]", 'yellow', attrs=['bold'])
+				print_c("[" + t.label + ": " + str(t.current) + "]", 'yellow')
 			else:
-				print("[" + t.label + ": " + str(t.current) + "]")
+				print_c("[" + t.label + ": " + str(t.current) + "]", "")
 
 			if mailtemps:
 				mailtemps = mailtemps + "[" + t.label + ": " + str(t.current) + "]\n"
@@ -101,7 +101,7 @@ if temps:
 				mailtemps = "[" + t.label + ": " + str(t.current) + "]\n"
 	elif temps['applesmc']:
 		for t in temps['applesmc']:
-			print("[" + t.label + ": " + str(t.current) + "]")
+			print_c("[" + t.label + ": " + str(t.current) + "]")
 	else:
 		pp.pprint(temps)
 else:
