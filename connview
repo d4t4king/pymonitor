@@ -16,6 +16,10 @@ for i in sorted(ifstats):
 
 print('========================================================================')
 
+if_counters = psutil.net_io_counters(pernic=True)
+pp.pprint(if_counters)
+
+print('========================================================================')
 # show NIC counters in table(?)
 # show connections\
 conns = psutil.net_connections()
