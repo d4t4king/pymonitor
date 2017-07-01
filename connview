@@ -3,21 +3,34 @@
 import psutil
 import pprint
 import termcolor
+import argparse
 from termcolor import colored,cprint
 
 pp = pprint.PrettyPrinter(indent=4)
+
+# handle arguments
+parser = argparse.ArgumentParser(description="Display connections and connection stats")
+parser.add_argument('-v', '--verbose', dest='verbosity', action='store_true', default=False, help='Not Yet Implemented')
+parser.add_argument('-l', '--listening', dest='listening', action='store_true', default=False, help="Display only listening connections")
+parser.add_argument('-e', '--established', dest='established', action='store_true', default=False, help='Display only established connections')
+args = parser.parse_args()
 
 # loop thru the interfaces
 ifstats = psutil.net_if_stats();
 
 # show NIC stats
 for i in sorted(ifstats):
-	print('{0:7s}\t{1:9s} {2:11s}').format(i + ":", "UP=" + str(ifstats[i].isup), " Speed=" + str(ifstats[i].speed))
+	print('{0:25s} {1:16s} {2:16s}').format(i + ":", "UP=" + str(ifstats[i].isup), " Speed=" + str(ifstats[i].speed))
 
 print('========================================================================')
 
 if_counters = psutil.net_io_counters(pernic=True)
-pp.pprint(if_counters)
+#pp.pprint(if_counters)
+print('{0:10s} {1:20s} {2:20s} {3:20s} {4:20s}').format('', 'bytes', 'packets', 'errors', 'dropped')
+print('{0:10s} {1:>10s}{2:>10s} {3:>10s}{4:>10s} {5:>10s}{6:>10s} {7:>10s}{8:>10s}').format('iface', 'in', 'out', 'in', 'out', 'in', 'out', 'in', 'out')
+for c in sorted(if_counters):
+	#pp.pprint(if_counters[c])
+	print('{0:10s} {1:>10s}{2:>10s} {3:>10s}{4:>10s} {5:>10s}{6:>10s} {7:>10s}{8:>10s}').format(c, str(if_counters[c].bytes_recv), str(if_counters[c].bytes_sent), str(if_counters[c].packets_recv), str(if_counters[c].packets_sent), str(if_counters[c].errin), str(if_counters[c].errout), str(if_counters[c].dropin), str(if_counters[c].dropout))
 
 print('========================================================================')
 # show NIC counters in table(?)
@@ -25,8 +38,18 @@ print('========================================================================'
 conns = psutil.net_connections()
 heads = ["Left Address", "Left Port", "Right Address", "Right Port", "Status", "PID"]
 print('{0:<24s}\t{1:<9s}\t{2:<24s}\t{3:<11s}\t{4:<12s}\t{5:<5s}').format("Left Address", "Left Port", "Right Address", "Right Port", "Status", "PID")
-for c in conns:
+for c in sorted(conns):
 	if c.raddr:
-		print('{0:<24s}\t{1:<9s}\t{2:<24s}\t{3:<11s}\t{4:<12s}\t{5:<5s}').format(c.laddr[0], str(c.laddr[1]), c.raddr[0], str(c.raddr[1]), c.status, str(c.pid))
+		if args.listening and c.status != 'LISTEN':
+			continue
+		elif args.established and c.status != 'ESTABLISHED':
+			continue
+		else:
+			print('{0:<24s}\t{1:<9s}\t{2:<24s}\t{3:<11s}\t{4:<12s}\t{5:<5s}').format(c.laddr[0], str(c.laddr[1]), c.raddr[0], str(c.raddr[1]), c.status, str(c.pid))
 	else:
-		print('{0:<24s}\t{1:<9s}\t{2:<24s}\t{3:<11s}\t{4:<12s}\t{5:<5s}').format(c.laddr[0], str(c.laddr[1]), "NA", "NA", c.status, str(c.pid))
+		if args.listening and c.status != 'LISTEN':
+			continue
+		elif args.established and c.status != 'ESTABLISHED':
+			continue
+		else:
+			print('{0:<24s}\t{1:<9s}\t{2:<24s}\t{3:<11s}\t{4:<12s}\t{5:<5s}').format(c.laddr[0], str(c.laddr[1]), "NA", "NA", c.status, str(c.pid))
