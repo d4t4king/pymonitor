@@ -1,0 +1,9 @@
+#!/usr/bin/python
+
+import psutil
+import argparse
+import termcolor
+
+pp = pprint.PrettyPrinter(indent=4)
+
+parser = argparse.ArgumentParser(description='Monitor partitions.  Alert on low disk space."
