@@ -2,8 +2,12 @@
 
 import psutil
 import argparse
-import termcolor
+import pprint
 
 pp = pprint.PrettyPrinter(indent=4)
 
-parser = argparse.ArgumentParser(description='Monitor partitions.  Alert on low disk space."
+parser = argparse.ArgumentParser(description='Monitor partitions.  Alert on low disk space.')
+args = parser.parse_args()
+
+partits = psutil.disk_partitions()
+pp.pprint(partits)
