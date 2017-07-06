@@ -178,7 +178,7 @@ if args.mailto and args.smtpserver:
 		<h1>WARNING!</h1>
 		<p>Average CPU Usage Percent over last 5 seconds: %(avg)s</p>
 		<p>[Mem Used: %(mem_pct)s%%; Swap Used: %(swap_pct)s%%]</p>
-		<p>%{mailtemps}s</p>
+		<p>%(mailtemps)s</p>
 	</body>
 </html>
 """ % locals()
