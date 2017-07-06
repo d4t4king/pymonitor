@@ -148,13 +148,25 @@ if fans:
 else:
 	print("No sensor data for fans.")
 
+alertstr = "Alert: "
 for ac in alertcondition:
 	if alertcondition[ac]:
+#if any(alertcondition[ac] == True for ac in alertcondition):
 		print("Alert condition met for " + ac + "!!!")
+		alertstr += ac + " "
+alertstr = "\n"
 
 ##########
 # mail section
 #########
+# if to and server are set
+# 	if alertcondition is met and opmode is normal (or alert(?))
+#		for each alertcondition
+#			append trigger to message
+# 	else if opmode is verbose
+#		send canned message
+# else
+# 	print to screen and report no mail info
 if args.mailto and args.smtpserver:
 	me = args.mailfrom
 	you = args.mailto or socket.getfqdn().replace('.', '@', 1)
@@ -164,10 +176,10 @@ if args.mailto and args.smtpserver:
 	msg['To'] = you
 
 	if opmode == 'verbose':
-		msg['Subject'] = "CPU Status for " + hostname
-		text = "Status:\nAverage CPU Usage Percent over last 5 seconds: " + str(avg) + "\n[Mem: " + str(mem_pct) + "; Swap: " + str(swap_pct) + "]\n"
+		msg['Subject'] = "System Status for " + hostname
+		text = "Status:\nAverage CPU usage percent over last 5 seconds: " + str(avg) + "\n[Mem: " + str(mem_pct) + "; Swap: " + str(swap_pct) + "]\n"
 		if mailtemps:
-			text = text + mailtemps + "\n"
+			text += mailtemps + "\n"
 		if mailfsen:
 			text += mailfsen
 
@@ -176,7 +188,7 @@ if args.mailto and args.smtpserver:
 	<head><title>CPU Status for %(hostname)s</title></head>
 	<body>
 		<h1>Status</h1>
-		<p>Average CPU Usage Percent over last 5 seconds: %(avg)s</p>
+		<p>Average CPU usage percent over last 5 seconds: %(avg)s</p>
 		<p>[Mem Used: %(mem_pct)s%%; Swap Used: %(swap_pct)s%%]</p>
 		<p>%(mailtemps)s</p>
 		<p>%(mailfsen)s</p>
@@ -184,10 +196,12 @@ if args.mailto and args.smtpserver:
 </html>
 """ % locals()
 	elif opmode == 'normal':
-		msg['Subject'] = "CPU Warning for " + hostname
-		text = "WARNING:\nAverage CPU Usage Percent over the last 5 seconds: " + str(avg) + "\nMem: " + str(mem_pct) + "; Swap: " + str(swap_pct) + "]\n"
+		msg['Subject'] = "System Warning for " + hostname
+		text = "Average CPU usage percent over the last 5 seconds: " + str(avg) + "\nMem: " + str(mem_pct) + "; Swap: " + str(swap_pct) + "]\n"
+		if alertstr:
+			text += alertstr
 		if mailtemps:
-			text = text + mailtemps + "\n"
+			text += mailtemps + "\n"
 		if mailfsen: 
 			text += mailfsen
 
@@ -196,6 +210,8 @@ if args.mailto and args.smtpserver:
 	<head><title>CPU Status for %(hostname)s</title><head>
 	<body>
 		<h1>WARNING!</h1>
+		<h2>Alert condition(s) met!</h2>
+		<h3>%(alertstr)s</h3>
 		<p>Average CPU Usage Percent over last 5 seconds: %(avg)s</p>
 		<p>[Mem Used: %(mem_pct)s%%; Swap Used: %(swap_pct)s%%]</p>
 		<p>%(mailtemps)s</p>
@@ -209,8 +225,8 @@ if args.mailto and args.smtpserver:
 
 	msg.attach(part1)
 	msg.attach(part2)
-
-	if opmode == 'verbose' or (opmode == 'normal' and avg >= 30.0):
+	
+	if opmode == 'verbose' or (opmode == 'normal' and any(alertcondition[a] == True for a in alertcondition)):
 		s = smtplib.SMTP(args.smtpserver)
 		s.sendmail(me, you, msg.as_string())
 		s.quit()
