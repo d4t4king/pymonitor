@@ -8,6 +8,7 @@ import pprint
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from termcolor import colored,cprint
+from subprocess import call,check_output
 
 pp = pprint.PrettyPrinter(indent=4)
 pcts = list()
@@ -28,6 +29,17 @@ args = parser.parse_args()
 # sets the color on or off dependent upon the command line options used
 # default is to show color
 coloron = args.coloron
+
+# determine if we're currently running in a VM
+def is_vm():
+	cmdout = check_output(["dmidecode", "-s", "system-product-name"]).rstrip('\n')
+	#cprint(cmdout, "magenta")
+	if cmdout == "VMware Virtual Platform":
+		return True
+	else:
+		# if we don't match any of the above, assume it's
+		# not a VM
+		return False
 
 # handle printing to screen
 # determines if color is enabled or not
@@ -108,45 +120,49 @@ for p in sorted(fsen):
 		mailfsen = "[" + p + ": " + str(fsen[p]) + "]\n"
 
 mailtemps = ''
-print_c("Temp Sensors: ", "green")
-if temps:
-	if temps['coretemp']:
-		for t in temps['coretemp']:
-			if t.current > 70.0:
-				alertcondition['temp'] = True
-				print_c("[" + t.label + ": " + str(t.current) + "]", 'red')
-			elif t.current < 70.0 and t.current >= 60.0:
-				print_c("[" + t.label + ": " + str(t.current) + "]", 'yellow')
-			elif t.current < 60.0 and t.current >= 45.0:
-				print_c("[" + t.label + ": " + str(t.current) + "]", 'yellow')
-			else:
-				print("[" + t.label + ": " + str(t.current) + "]")
-
-			if mailtemps:
-				mailtemps = mailtemps + "[" + t.label + ": " + str(t.current) + "]\n"
-			else:
-				mailtemps = "[" + t.label + ": " + str(t.current) + "]\n"
-	elif temps['applesmc']:
-		for t in temps['applesmc']:
-			print("[" + t.label + ": " + str(t.current) + "]")
-	else:
-		pp.pprint(temps)
-else:
-	print("No sensor data for temps.")
-
 mailfans = ''
-print_c("Fan Sensors: ", "green")
-if fans:
-	if 'applesmc' in fans:
-		for f in fans['applesmc']:
-			print("[" + f.label + ": " + str(f.current) + "]")
-	elif 'thinkpad' in fans:
-		for f in fans['thinkpad']:
-			print("[" + f.label + ": " + str(f.current) + "]")
-	else:
-		pp.pprint(fans)
+
+if is_vm():
+	print("Is VM.  Not reporting temps or fans.")
 else:
-	print("No sensor data for fans.")
+	print_c("Temp Sensors: ", "green")
+	if temps:
+		if temps['coretemp']:
+			for t in temps['coretemp']:
+				if t.current > 70.0:
+					alertcondition['temp'] = True
+					print_c("[" + t.label + ": " + str(t.current) + "]", 'red')
+				elif t.current < 70.0 and t.current >= 60.0:
+					print_c("[" + t.label + ": " + str(t.current) + "]", 'yellow')
+				elif t.current < 60.0 and t.current >= 45.0:
+					print_c("[" + t.label + ": " + str(t.current) + "]", 'yellow')
+				else:
+					print("[" + t.label + ": " + str(t.current) + "]")
+
+				if mailtemps:
+					mailtemps = mailtemps + "[" + t.label + ": " + str(t.current) + "]\n"
+				else:
+					mailtemps = "[" + t.label + ": " + str(t.current) + "]\n"
+		elif temps['applesmc']:
+			for t in temps['applesmc']:
+				print("[" + t.label + ": " + str(t.current) + "]")
+		else:
+			pp.pprint(temps)
+	else:
+		print("No sensor data for temps.")
+
+	print_c("Fan Sensors: ", "green")
+	if fans:
+		if 'applesmc' in fans:
+			for f in fans['applesmc']:
+				print("[" + f.label + ": " + str(f.current) + "]")
+		elif 'thinkpad' in fans:
+			for f in fans['thinkpad']:
+				print("[" + f.label + ": " + str(f.current) + "]")
+		else:
+			pp.pprint(fans)
+	else:
+		print("No sensor data for fans.")
 
 alertstr = "Alert: "
 for ac in alertcondition:
