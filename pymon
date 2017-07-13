@@ -5,6 +5,7 @@ import socket
 import smtplib
 import argparse
 import pprint
+import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from termcolor import colored,cprint
@@ -55,6 +56,15 @@ opmode = args.opmode
 
 alertcondition = { 'cpu' : False, 'mem' : False, 'swap' : False, 'fs' : False, 'temp' : False }
 
+
+
+
+if not os.getuid() == 0:
+	print_c("You must run as root or sudo!", "red")
+	raise RuntimeError("uid = " + str(os.getuid()))
+
+	
+	
 for x in range(5):
 	pcts.append(psutil.cpu_percent(interval=1))
 
