@@ -11,6 +11,25 @@ from email.mime.multipart import MIMEMultipart
 from termcolor import colored,cprint
 from subprocess import call,check_output
 
+# determine if we're currently running in a VM
+def is_vm():
+	cmdout = check_output(["dmidecode", "-s", "system-product-name"]).rstrip('\n')
+	#cprint(cmdout, "magenta")
+	if cmdout == "VMware Virtual Platform":
+		return True
+	else:
+		# if we don't match any of the above, assume it's
+		# not a VM
+		return False
+
+# handle printing to screen
+# determines if color is enabled or not
+def print_c(msg, color):
+	if coloron:
+		cprint(msg, color)
+	else:
+		print(msg)
+
 pp = pprint.PrettyPrinter(indent=4)
 pcts = list()
 hostname = socket.gethostname()
@@ -30,25 +49,6 @@ args = parser.parse_args()
 # sets the color on or off dependent upon the command line options used
 # default is to show color
 coloron = args.coloron
-
-# determine if we're currently running in a VM
-def is_vm():
-	cmdout = check_output(["dmidecode", "-s", "system-product-name"]).rstrip('\n')
-	#cprint(cmdout, "magenta")
-	if cmdout == "VMware Virtual Platform":
-		return True
-	else:
-		# if we don't match any of the above, assume it's
-		# not a VM
-		return False
-
-# handle printing to screen
-# determines if color is enabled or not
-def print_c(msg, color):
-	if coloron:
-		cprint(msg, color)
-	else:
-		print(msg)
 
 # verbose mode will send a message everytime the script runs
 # normal mode will only send messages when threshold is met
