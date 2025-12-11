@@ -16,20 +16,35 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import pprint
 import json
 import os
 import time
+import sys
 from typing import Dict, List
 
 import psutil
+import logging
 
+# COnfigure Logging
+logging.basicConfig(
+    filename='./syspoll.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 SCRIPT_NAME = os.path.basename(__file__)
 
 
 def ts() -> str:
-    return datetime.datetime.now(datetime.UTC).isoformat() + "Z"
-
+    #if sys.version_info[0] == 3 and sys.version_info[1] <= 11:
+    #    return datetime.datetime.now(datetime.timezone.utc) + "Z"
+    #elif sys.version_info[0] == 3 and sys.version_info[1] >= 12:
+    #    return datetime.datetime.now(datetime.UTC).isoformat() + "Z"
+    #else:
+    #    raise Exception(f"Unrecognized python version info: {sys.version_info}")
+    # maybe this is version agnostic???
+    return datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
 
 def fmt_line(category: str, data: Dict[str, object]) -> str:
     # Flatten data into comma-separated key=repr(value) pairs. For nested dicts,
@@ -167,11 +182,21 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Include loopback (lo) interface in net_if and net_errors",
     )
+    p.add_argument(
+        "--logfile",
+        dest='logfile',
+        help="The file path or name to write output to, if not the default."
+    )
     return p.parse_args()
 
 
 def main() -> None:
+    pp = pprint.PrettyPrinter(indent=4)
+
     args = parse_args()
+
+    #pp.pprint(sys.version_info)
+
     if args.categories:
         cats = [c.strip() for c in args.categories.split(",") if c.strip()]
     else:
