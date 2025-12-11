@@ -28,7 +28,7 @@ SCRIPT_NAME = os.path.basename(__file__)
 
 
 def ts() -> str:
-    return datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    return datetime.datetime.now(datetime.UTC).isoformat() + "Z"
 
 
 def fmt_line(category: str, data: Dict[str, object]) -> str:
@@ -41,7 +41,7 @@ def fmt_line(category: str, data: Dict[str, object]) -> str:
         else:
             sval = str(v)
         pairs.append(f"{k}={sval}")
-    return f"{ts()} {SCRIPT_NAME} {category} collected {', '.join(pairs)}"
+    return f"{ts()} {SCRIPT_NAME} {category} DATA {', '.join(pairs)}"
 
 
 def collect_cpu() -> Dict[str, object]:
@@ -61,17 +61,27 @@ def collect_memory() -> Dict[str, object]:
         "used": mem.used,
     }
 
+def collect_swap() -> Dict[str, object]:
+    swap = psutil.swap_memory()
+    return {
+        "total": swap.total,
+        "free": swap.free,
+        "percent": swap.percent,
+        "used": swap.used,
+    }
 
 def collect_disk(path: str = "/") -> Dict[str, object]:
     d = psutil.disk_usage(path)
     return {"path": path, "total": d.total, "free": d.free, "percent": d.percent}
 
 
-def collect_net_if() -> Dict[str, object]:
+def collect_net_if(include_loopback: bool = False) -> Dict[str, object]:
     stats = psutil.net_if_stats()
     addrs = psutil.net_if_addrs()
     out = {}
     for ifname, st in stats.items():
+        if ifname == "lo" and not include_loopback:
+            continue
         a = addrs.get(ifname, [])
         # collect IPs
         ips = []
@@ -90,10 +100,12 @@ def collect_net_if() -> Dict[str, object]:
     return out
 
 
-def collect_net_errors() -> Dict[str, object]:
+def collect_net_errors(include_loopback: bool = False) -> Dict[str, object]:
     counters = psutil.net_io_counters(pernic=True)
     out = {}
     for ifname, c in counters.items():
+        if ifname == "lo" and not include_loopback:
+            continue
         out[ifname] = {
             "errin": getattr(c, "errin", 0),
             "errout": getattr(c, "errout", 0),
@@ -121,21 +133,23 @@ def measure_bandwidth(interval: float = 1.0, ifname: str | None = None) -> Dict[
     return out
 
 
-DEFAULT_CATEGORIES = ["cpu", "memory", "disk", "net_if", "net_errors"]
+DEFAULT_CATEGORIES = ["cpu", "memory", "swap", "disk", "net_if", "net_errors"]
 
 
-def run_categories(categories: List[str]) -> None:
+def run_categories(categories: List[str], include_loopback: bool = False) -> None:
     for cat in categories:
         if cat == "cpu":
             print(fmt_line("cpu", collect_cpu()))
         elif cat == "memory":
             print(fmt_line("memory", collect_memory()))
+        elif cat == "swap":
+            print(fmt_line("swap", collect_swap()))
         elif cat == "disk":
             print(fmt_line("disk", collect_disk()))
         elif cat == "net_if":
-            print(fmt_line("net_if", collect_net_if()))
+            print(fmt_line("net_if", collect_net_if(include_loopback=include_loopback)))
         elif cat == "net_errors":
-            print(fmt_line("net_errors", collect_net_errors()))
+            print(fmt_line("net_errors", collect_net_errors(include_loopback=include_loopback)))
         elif cat.startswith("bandwidth"):
             # allow optional interface: bandwidth or bandwidth:eth0
             parts = cat.split(":", 1)
@@ -148,6 +162,11 @@ def run_categories(categories: List[str]) -> None:
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Simple cron-friendly system poller")
     p.add_argument("categories", nargs="?", help="Comma-separated categories to collect")
+    p.add_argument(
+        "--include-loopback",
+        action="store_true",
+        help="Include loopback (lo) interface in net_if and net_errors",
+    )
     return p.parse_args()
 
 
@@ -157,7 +176,7 @@ def main() -> None:
         cats = [c.strip() for c in args.categories.split(",") if c.strip()]
     else:
         cats = DEFAULT_CATEGORIES
-    run_categories(cats)
+    run_categories(cats, include_loopback=args.include_loopback)
 
 
 if __name__ == "__main__":
