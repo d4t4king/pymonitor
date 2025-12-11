@@ -1,10 +1,19 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+"""
+Lists the connections and connection stats for all network interfaces.
+
+Usage: connview.py [-h] [-v] [-l] [-e]
+
+Needs to be modernized further to Python 3 standards.  It now works, but
+the formatting lines are still Python 2 style and need to be updated.
+
+Also, if there are any other modernization that need to be done, please do so.
+"""
 
 import psutil
 import pprint
-import termcolor
 import argparse
-from termcolor import colored,cprint
+from termcolor import cprint
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -20,24 +29,27 @@ ifstats = psutil.net_if_stats();
 
 # show NIC stats
 for i in sorted(ifstats):
-	print('{0:25s} {1:16s} {2:16s}').format(i + ":", "UP=" + str(ifstats[i].isup), " Speed=" + str(ifstats[i].speed))
+	pp.pprint(i)
+	#print('{0:25s} {1:16s} {2:16s}').format(i + ":", "UP=" + str(ifstats[i].isup), " Speed=" + str(ifstats[i].speed))
 
 print('========================================================================')
 
 if_counters = psutil.net_io_counters(pernic=True)
-#pp.pprint(if_counters)
-print('{0:10s} {1:20s} {2:20s} {3:20s} {4:20s}').format('', 'bytes', 'packets', 'errors', 'dropped')
-print('{0:10s} {1:>10s}{2:>10s} {3:>10s}{4:>10s} {5:>10s}{6:>10s} {7:>10s}{8:>10s}').format('iface', 'in', 'out', 'in', 'out', 'in', 'out', 'in', 'out')
+pp.pprint(if_counters)
+# These are header rows that need to be updated to python3 formatting
+#print(f"{0:10s} {1:20s} {2:20s} {3:20s} {4:20s}").format('', 'bytes', 'packets', 'errors', 'dropped')
+#print('{0:10s} {1:>10s}{2:>10s} {3:>10s}{4:>10s} {5:>10s}{6:>10s} {7:>10s}{8:>10s}').format('iface', 'in', 'out', 'in', 'out', 'in', 'out', 'in', 'out')
 for c in sorted(if_counters):
-	#pp.pprint(if_counters[c])
-	print('{0:10s} {1:>10s}{2:>10s} {3:>10s}{4:>10s} {5:>10s}{6:>10s} {7:>10s}{8:>10s}').format(c, str(if_counters[c].bytes_recv), str(if_counters[c].bytes_sent), str(if_counters[c].packets_recv), str(if_counters[c].packets_sent), str(if_counters[c].errin), str(if_counters[c].errout), str(if_counters[c].dropin), str(if_counters[c].dropout))
+	pp.pprint(if_counters[c])
+	#print('{0:10s} {1:>10s}{2:>10s} {3:>10s}{4:>10s} {5:>10s}{6:>10s} {7:>10s}{8:>10s}').format(c, str(if_counters[c].bytes_recv), str(if_counters[c].bytes_sent), str(if_counters[c].packets_recv), str(if_counters[c].packets_sent), str(if_counters[c].errin), str(if_counters[c].errout), str(if_counters[c].dropin), str(if_counters[c].dropout))
 
 print('========================================================================')
 # show NIC counters in table(?)
 # show connections\
 conns = psutil.net_connections()
 heads = ["Left Address", "Left Port", "Right Address", "Right Port", "Status", "PID"]
-print('{0:<24s}\t{1:<9s}\t{2:<24s}\t{3:<11s}\t{4:<12s}\t{5:<5s}').format("Left Address", "Left Port", "Right Address", "Right Port", "Status", "PID")
+# more headers
+#print('{0:<24s}\t{1:<9s}\t{2:<24s}\t{3:<11s}\t{4:<12s}\t{5:<5s}').format("Left Address", "Left Port", "Right Address", "Right Port", "Status", "PID")
 for c in sorted(conns):
 	if c.raddr:
 		if args.listening and c.status != 'LISTEN':
@@ -45,11 +57,13 @@ for c in sorted(conns):
 		elif args.established and c.status != 'ESTABLISHED':
 			continue
 		else:
-			print('{0:<24s}\t{1:<9s}\t{2:<24s}\t{3:<11s}\t{4:<12s}\t{5:<5s}').format(c.laddr[0], str(c.laddr[1]), c.raddr[0], str(c.raddr[1]), c.status, str(c.pid))
+			pp.pprint(c)
+			#print('{0:<24s}\t{1:<9s}\t{2:<24s}\t{3:<11s}\t{4:<12s}\t{5:<5s}').format(c.laddr[0], str(c.laddr[1]), c.raddr[0], str(c.raddr[1]), c.status, str(c.pid))
 	else:
 		if args.listening and c.status != 'LISTEN':
 			continue
 		elif args.established and c.status != 'ESTABLISHED':
 			continue
 		else:
-			print('{0:<24s}\t{1:<9s}\t{2:<24s}\t{3:<11s}\t{4:<12s}\t{5:<5s}').format(c.laddr[0], str(c.laddr[1]), "NA", "NA", c.status, str(c.pid))
+			pp.pprint(c)
+			#print('{0:<24s}\t{1:<9s}\t{2:<24s}\t{3:<11s}\t{4:<12s}\t{5:<5s}').format(c.laddr[0], str(c.laddr[1]), "NA", "NA", c.status, str(c.pid))
