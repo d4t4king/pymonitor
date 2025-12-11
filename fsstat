@@ -1,17 +1,22 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 import psutil
 import argparse
 import pprint
 
-pp = pprint.PrettyPrinter(indent=4)
+def main():
+	pp = pprint.PrettyPrinter(indent=4)
 
-parser = argparse.ArgumentParser(description='Monitor partitions.  Alert on low disk space.')
-args = parser.parse_args()
+	parser = argparse.ArgumentParser(description='Monitor partitions.  Alert on low disk space.')
+	args = parser.parse_args()
 
-partits = psutil.disk_partitions()
-#pp.pprint(partits)
-print("device\tmount point\tfstype\t% used")
-for p in partits:
-	print(p.device + "\t" + p.mountpoint + "\t" + p.fstype + "\t" + str(psutil.disk_usage(p.mountpoint).percent))
+	partits = psutil.disk_partitions()
+	#pp.pprint(partits)
+	print("device\tmount point\tfstype\t% used")
+	for p in partits:
+		if '/snap/' in p.mountpoint:
+			continue
+		print(p.device + "\t" + p.mountpoint + "\t" + p.fstype + "\t" + str(psutil.disk_usage(p.mountpoint).percent))
 
+if __name__=='__main__':
+	main()
