@@ -1,0 +1,301 @@
+# ...existing code...
+#!/usr/bin/env python3
+"""
+syspoller - System Performance Monitoring Tool
+
+A Python script designed to monitor key Linux system metrics over extended periods.
+Tracks memory, CPU usage, disk usage, and network status with configurable polling intervals.
+
+Author: d4t4king
+Date: December 2025
+"""
+
+import sys
+import os
+import signal
+import time
+import json
+import logging
+import argparse
+from dataclasses import dataclass
+from typing import Optional, Dict, Any
+from datetime import datetime
+from threading import Thread, Event
+
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+PIDFILE = "/tmp/pymonitor_syspoller.pid"
+
+
+@dataclass
+class SystemMetrics:
+    """Container for collected system metrics."""
+    timestamp: datetime
+    cpu_usage: Optional[float] = None
+    memory_usage: Optional[Dict[str, Any]] = None
+    disk_usage: Optional[Dict[str, Any]] = None
+    network_status: Optional[Dict[str, Any]] = None
+
+
+class CpuMonitor:
+    """
+    Lightweight CPU usage sampler using /proc/stat.
+    Maintains previous totals to compute usage between samples.
+    """
+
+    def __init__(self) -> None:
+        self.prev_total: Optional[int] = None
+        self.prev_idle: Optional[int] = None
+
+    def _read_cpu_times(self) -> tuple[int, int]:
+        with open("/proc/stat", "r") as f:
+            line = f.readline().strip()
+        parts = line.split()
+        if parts[0] != "cpu":
+            raise RuntimeError("Unexpected /proc/stat format")
+        values = list(map(int, parts[1:]))
+        # idle is the 4th field (idle) + 5th (iowait) if present
+        idle = values[3] + (values[4] if len(values) > 4 else 0)
+        total = sum(values)
+        return total, idle
+
+    def sample(self) -> Optional[float]:
+        """
+        Sample CPU and return percentage usage since last sample.
+        Returns None if this is the first sample (no previous data).
+        """
+        total, idle = self._read_cpu_times()
+        if self.prev_total is None or self.prev_idle is None:
+            self.prev_total = total
+            self.prev_idle = idle
+            return None
+        delta_total = total - self.prev_total
+        delta_idle = idle - self.prev_idle
+        self.prev_total = total
+        self.prev_idle = idle
+        if delta_total <= 0:
+            return 0.0
+        usage = (delta_total - delta_idle) / delta_total * 100.0
+        return round(usage, 2)
+
+
+class SysPoller:
+    """
+    Main system polling monitor.
+
+    Collects and stores system performance metrics at regular intervals.
+    """
+
+    def __init__(self, poll_interval: int = 60):
+        """
+        Initialize the system poller.
+
+        Args:
+            poll_interval: Time in seconds between metric collection (default: 60)
+        """
+        self.poll_interval = poll_interval
+        self.metrics_history: list[SystemMetrics] = []
+        self.running = False
+        self._stop_event = Event()
+        self._polling_thread: Optional[Thread] = None
+        self._cpu = CpuMonitor()
+        logger.info(f"SysPoller initialized with {poll_interval}s poll interval")
+
+    def start(self) -> None:
+        """Start the polling loop in a background thread (foreground process)."""
+        if self.running:
+            logger.warning("SysPoller is already running")
+            return
+        self.running = True
+        self._stop_event.clear()
+        self._polling_thread = Thread(target=self._polling_loop, daemon=True)
+        self._polling_thread.start()
+        logger.info("SysPoller polling thread started")
+
+    def stop(self) -> None:
+        """Stop the polling loop gracefully."""
+        if not self.running:
+            logger.warning("SysPoller is not running")
+            return
+        logger.info("Stopping SysPoller...")
+        self._stop_event.set()
+        if self._polling_thread and self._polling_thread.is_alive():
+            self._polling_thread.join(timeout=5)
+        self.running = False
+        logger.info("SysPoller stopped")
+
+    def _polling_loop(self) -> None:
+        """
+        Background thread loop that continuously collects metrics.
+        Runs until stop() is called.
+        """
+        logger.debug("Polling loop started")
+        # Prime the CPU sampler so the first real sample has a previous baseline
+        self._cpu.sample()
+        while not self._stop_event.is_set():
+            try:
+                metrics = self.collect_metrics()
+                self.metrics_history.append(metrics)
+                logger.debug(f"Collected metrics at {metrics.timestamp.isoformat()}")
+                # Wait for poll_interval or until stop event is set
+                self._stop_event.wait(timeout=self.poll_interval)
+            except Exception as e:
+                logger.error(f"Error during metric collection: {e}", exc_info=True)
+                self._stop_event.wait(timeout=self.poll_interval)
+        logger.debug("Polling loop ended")
+
+    def collect_metrics(self) -> SystemMetrics:
+        """
+        Collect current system metrics (currently only CPU implemented).
+
+        Returns:
+            SystemMetrics object with current measurements
+        """
+        cpu_usage = self._cpu.sample()
+        # If sample returned None (first call), sleep briefly and resample to produce a meaningful value
+        if cpu_usage is None:
+            time.sleep(0.1)
+            cpu_usage = self._cpu.sample()
+        metrics = SystemMetrics(
+            timestamp=datetime.now(),
+            cpu_usage=cpu_usage,
+            memory_usage=None,
+            disk_usage=None,
+            network_status=None,
+        )
+        return metrics
+
+    def get_metrics_history(self) -> list[SystemMetrics]:
+        """
+        Retrieve the collected metrics history.
+
+        Returns:
+            List of SystemMetrics collected over time
+        """
+        return self.metrics_history.copy()
+
+
+def _write_pidfile(pidfile: str) -> None:
+    with open(pidfile, "w") as f:
+        f.write(str(os.getpid()))
+
+
+def _read_pidfile(pidfile: str) -> Optional[int]:
+    try:
+        with open(pidfile, "r") as f:
+            return int(f.read().strip())
+    except Exception:
+        return None
+
+
+def _remove_pidfile(pidfile: str) -> None:
+    try:
+        os.remove(pidfile)
+    except FileNotFoundError:
+        pass
+
+
+def _is_process_running(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def main() -> int:
+    """
+    Main entry point for syspoller.
+
+    Returns:
+        Exit code (0 for success, non-zero for failure)
+    """
+    parser = argparse.ArgumentParser(description="syspoller - system performance poller")
+    parser.add_argument("command", choices=["start", "stop", "collect_metrics", "get_metrics_history"])
+    parser.add_argument("--interval", "-i", type=int, default=60, help="poll interval in seconds (start)")
+    parser.add_argument("--pidfile", type=str, default=PIDFILE, help="pidfile path")
+    args = parser.parse_args()
+
+    if args.command == "start":
+        existing = _read_pidfile(args.pidfile)
+        if existing and _is_process_running(existing):
+            logger.error(f"Another syspoller appears to be running (pid={existing}). Stop it first.")
+            return 1
+        _write_pidfile(args.pidfile)
+        poller = SysPoller(poll_interval=args.interval)
+
+        def _handle_signal(signum, frame):
+            logger.info(f"Received signal {signum}, shutting down")
+            poller.stop()
+            _remove_pidfile(args.pidfile)
+            sys.exit(0)
+
+        signal.signal(signal.SIGINT, _handle_signal)
+        signal.signal(signal.SIGTERM, _handle_signal)
+
+        try:
+            poller.start()
+            logger.info("syspoller started (press Ctrl-C to stop)")
+            while poller.running:
+                time.sleep(1)
+        finally:
+            poller.stop()
+            _remove_pidfile(args.pidfile)
+        return 0
+
+    elif args.command == "stop":
+        pid = _read_pidfile(args.pidfile)
+        if not pid:
+            logger.error("No pidfile found; is syspoller running?")
+            return 1
+        if not _is_process_running(pid):
+            logger.error(f"No process with pid {pid} is running, removing stale pidfile")
+            _remove_pidfile(args.pidfile)
+            return 1
+        try:
+            os.kill(pid, signal.SIGTERM)
+            logger.info(f"Sent SIGTERM to pid {pid}")
+        except Exception as e:
+            logger.error(f"Failed to signal process {pid}: {e}")
+            return 1
+        # best-effort removal of pidfile; the running process should remove on exit
+        time.sleep(0.5)
+        _remove_pidfile(args.pidfile)
+        return 0
+
+    elif args.command == "collect_metrics":
+        # One-shot CPU measurement using local CpuMonitor
+        cm = CpuMonitor()
+        cm.sample()  # prime
+        time.sleep(0.1)
+        usage = cm.sample()
+        out = {
+            "timestamp": datetime.now().isoformat(),
+            "cpu_usage_percent": usage,
+        }
+        print(json.dumps(out))
+        return 0
+
+    elif args.command == "get_metrics_history":
+        pid = _read_pidfile(args.pidfile)
+        if not pid or not _is_process_running(pid):
+            logger.error("No running syspoller found; metrics history only available from a running instance in memory.")
+            return 1
+        # Without IPC, cannot fetch in-memory history from another process.
+        logger.info(f"syspoller running with pid {pid}. To get history, run a monitoring consumer inside the process or add persistence.")
+        return 1
+
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+# ...existing code...
