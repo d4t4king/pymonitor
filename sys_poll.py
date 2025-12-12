@@ -21,7 +21,7 @@ import json
 import os
 import time
 import sys
-from typing import Dict, List
+from typing import Dict, List, Any, Union
 
 import psutil
 import logging
@@ -30,8 +30,9 @@ import logging
 logging.basicConfig(
     filename='./syspoll.log',
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s %(levelname)s %(message)s'
 )
+logger = logging.getLogger(__name__)
 
 SCRIPT_NAME = os.path.basename(__file__)
 
@@ -56,8 +57,19 @@ def fmt_line(category: str, data: Dict[str, object]) -> str:
         else:
             sval = str(v)
         pairs.append(f"{k}={sval}")
-    return f"{ts()} {SCRIPT_NAME} {category} DATA {', '.join(pairs)}"
+    return f"{ts()} {SCRIPT_NAME} {category} :: {', '.join(pairs)}"
 
+def fmt_log_line(category: str, data: Dict[str, object]) -> str:
+    # Flatten data into comma-separated key=repr(value) pairs. For nested dicts,
+    # JSON-encode the value so it's a single token.
+    pairs: List[str] = []
+    for k, v in data.items():
+        if isinstance(v, (dict, list)):
+            sval = json.dumps(v, separators=(",", ":"))
+        else:
+            sval = str(v)
+        pairs.append(f"{k}={sval}")
+    return f"{category} {', '.join(pairs)}"
 
 def collect_cpu() -> Dict[str, object]:
     return {
@@ -151,27 +163,35 @@ def measure_bandwidth(interval: float = 1.0, ifname: str | None = None) -> Dict[
 DEFAULT_CATEGORIES = ["cpu", "memory", "swap", "disk", "net_if", "net_errors"]
 
 
-def run_categories(categories: List[str], include_loopback: bool = False) -> None:
+def run_categories(categories: List[str], logfile: str, include_loopback: bool = False) -> None:
     for cat in categories:
         if cat == "cpu":
             print(fmt_line("cpu", collect_cpu()))
+            logger.info(fmt_log_line("cpu", collect_cpu()))
         elif cat == "memory":
             print(fmt_line("memory", collect_memory()))
+            logger.info(fmt_log_line("memory", collect_memory()))
         elif cat == "swap":
             print(fmt_line("swap", collect_swap()))
+            logger.info(fmt_log_line("swap", collect_swap()))
         elif cat == "disk":
             print(fmt_line("disk", collect_disk()))
+            logger.info(fmt_log_line("disk", collect_disk()))
         elif cat == "net_if":
             print(fmt_line("net_if", collect_net_if(include_loopback=include_loopback)))
+            logger.info(fmt_log_line("net_if", collect_net_if(include_loopback=include_loopback)))
         elif cat == "net_errors":
             print(fmt_line("net_errors", collect_net_errors(include_loopback=include_loopback)))
+            logger.info(fmt_log_line("net_errors", collect_net_errors(include_loopback=include_loopback)))
         elif cat.startswith("bandwidth"):
             # allow optional interface: bandwidth or bandwidth:eth0
             parts = cat.split(":", 1)
             iface = parts[1] if len(parts) > 1 else None
             print(fmt_line("bandwidth", measure_bandwidth(ifname=iface)))
+            logger.info(fmt_log_line("bandwidth", measure_bandwidth(ifname=iface)))
         else:
             print(fmt_line("unknown", {"requested": cat}))
+            logger.warning(fmt_log_line("unknown", {"requested": cat}))
 
 
 def parse_args() -> argparse.Namespace:
@@ -196,12 +216,13 @@ def main() -> None:
     args = parse_args()
 
     #pp.pprint(sys.version_info)
+    print(f"include_loopback is of type {str(type(args.include_loopback))} with value {args.include_loopback}")
 
     if args.categories:
         cats = [c.strip() for c in args.categories.split(",") if c.strip()]
     else:
         cats = DEFAULT_CATEGORIES
-    run_categories(cats, include_loopback=args.include_loopback)
+    run_categories(cats, logfile=args.logfile, include_loopback=args.include_loopback )
 
 
 if __name__ == "__main__":
