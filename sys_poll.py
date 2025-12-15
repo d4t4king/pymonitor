@@ -163,40 +163,54 @@ def measure_bandwidth(interval: float = 1.0, ifname: str | None = None) -> Dict[
 DEFAULT_CATEGORIES = ["cpu", "memory", "swap", "disk", "net_if", "net_errors"]
 
 
-def run_categories(categories: List[str], logfile: str, include_loopback: bool = False) -> None:
+def run_categories(categories: List[str], logfile: str, quiet: bool =False, include_loopback: bool =False) -> None:
     for cat in categories:
         if cat == "cpu":
-            print(fmt_line("cpu", collect_cpu()))
+            if not quiet:
+                print(fmt_line("cpu", collect_cpu()))
             logger.info(fmt_log_line("cpu", collect_cpu()))
         elif cat == "memory":
-            print(fmt_line("memory", collect_memory()))
+            if not quiet:
+                print(fmt_line("memory", collect_memory()))
             logger.info(fmt_log_line("memory", collect_memory()))
         elif cat == "swap":
-            print(fmt_line("swap", collect_swap()))
+            if not quiet:
+                print(fmt_line("swap", collect_swap()))
             logger.info(fmt_log_line("swap", collect_swap()))
         elif cat == "disk":
-            print(fmt_line("disk", collect_disk()))
+            if not quiet:
+                print(fmt_line("disk", collect_disk()))
             logger.info(fmt_log_line("disk", collect_disk()))
         elif cat == "net_if":
-            print(fmt_line("net_if", collect_net_if(include_loopback=include_loopback)))
+            if not quiet:
+                print(fmt_line("net_if", collect_net_if(include_loopback=include_loopback)))
             logger.info(fmt_log_line("net_if", collect_net_if(include_loopback=include_loopback)))
         elif cat == "net_errors":
-            print(fmt_line("net_errors", collect_net_errors(include_loopback=include_loopback)))
+            if not quiet:
+                print(fmt_line("net_errors", collect_net_errors(include_loopback=include_loopback)))
             logger.info(fmt_log_line("net_errors", collect_net_errors(include_loopback=include_loopback)))
         elif cat.startswith("bandwidth"):
             # allow optional interface: bandwidth or bandwidth:eth0
             parts = cat.split(":", 1)
             iface = parts[1] if len(parts) > 1 else None
-            print(fmt_line("bandwidth", measure_bandwidth(ifname=iface)))
+            if not quiet:
+                print(fmt_line("bandwidth", measure_bandwidth(ifname=iface)))
             logger.info(fmt_log_line("bandwidth", measure_bandwidth(ifname=iface)))
         else:
-            print(fmt_line("unknown", {"requested": cat}))
+            if not quiet:
+                print(fmt_line("unknown", {"requested": cat}))
             logger.warning(fmt_log_line("unknown", {"requested": cat}))
 
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Simple cron-friendly system poller")
     p.add_argument("categories", nargs="?", help="Comma-separated categories to collect")
+    p.add_argument(
+        '-q', '--quite', 
+        dest='quiet',  
+        action='store_true', 
+        help="Cron mode.  Suppress all output except errors."
+    )
     p.add_argument(
         "--include-loopback",
         action="store_true",
@@ -222,7 +236,7 @@ def main() -> None:
         cats = [c.strip() for c in args.categories.split(",") if c.strip()]
     else:
         cats = DEFAULT_CATEGORIES
-    run_categories(cats, logfile=args.logfile, include_loopback=args.include_loopback )
+    run_categories(cats, logfile=args.logfile, quiet=args.quiet, include_loopback=args.include_loopback)
 
 
 if __name__ == "__main__":
