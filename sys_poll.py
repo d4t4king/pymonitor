@@ -216,7 +216,7 @@ def main() -> None:
     args = parse_args()
 
     #pp.pprint(sys.version_info)
-    print(f"include_loopback is of type {str(type(args.include_loopback))} with value {args.include_loopback}")
+    #print(f"include_loopback is of type {str(type(args.include_loopback))} with value {args.include_loopback}")
 
     if args.categories:
         cats = [c.strip() for c in args.categories.split(",") if c.strip()]
