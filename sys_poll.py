@@ -28,7 +28,7 @@ import logging
 
 # COnfigure Logging
 logging.basicConfig(
-    filename='./syspoll.log',
+    filename='syspoll.log',
     level=logging.INFO,
     format='%(asctime)s %(levelname)s %(message)s'
 )
@@ -206,7 +206,7 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Simple cron-friendly system poller")
     p.add_argument("categories", nargs="?", help="Comma-separated categories to collect")
     p.add_argument(
-        '-q', '--quite', 
+        '-q', '--quiet', 
         dest='quiet',  
         action='store_true', 
         help="Cron mode.  Suppress all output except errors."
