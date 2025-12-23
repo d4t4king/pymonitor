@@ -102,3 +102,10 @@ ENV/
 
 # skip logfiles
 *.log
+
+# skip data files and directories
+csvs/
+*.zip
+*.tar.gz
+*.tar.bz2
+*.tar.xz
