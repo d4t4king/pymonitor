@@ -67,6 +67,12 @@ def run_categories(categories: List[str], logfile: str, include_loopback: bool =
     # csv_lines will hold the raw csv data to be shipped to the reporting platform.
     # cav_lines[cat, comma-separated-lines]
     csv_lines = {}
+    fieldnames = {
+        'cpu': ['Percent', 'Logical CPUs', 'Physical CPUs'],
+        'memory': ['Total (B)', 'Free (B)', 'Percent', 'Used (B)'],
+        'swap': ['Total', 'Free', 'Percent', 'Used'],
+        'disk': ['Path', 'Total', 'Free', 'Percent'],
+    }
     for cat in categories:
         if cat not in csv_lines.keys():
             csv_lines[cat] = []
@@ -84,21 +90,35 @@ def run_categories(categories: List[str], logfile: str, include_loopback: bool =
                 pct = parts[6].split('=')[1].strip(',')
                 used = parts[7].split('=')[1].strip(',')
                 csv_lines[cat].append([ts,total,avail,used,pcnt])
+            elif cat == 'swap':
+                total = parts[4].split('=')[1].strip(',')
+                free = parts[5].split('=')[1].strip(',')
+                pct = parts[6].split('=')[1].strip(',')
+                used = parts[7].split('=')[1].strip(',')
+                csv_lines[cat].append([ts,total,free,pct,used])
+            elif cat == 'disk':
+                # Sample Data
+                #2025-12-16 20:22:13,509 INFO disk path=/, total=103705931776, free=83575291904, percent=15.9
+                path = parts[4].split('=')[1].strip(',')
+                total = parts[5].split('=')[1].strip(',')
+                free = parts[6].split('=')[1].strip(',')
+                pct = parts[7].split('=')[1].strip(',')
+                csv_lines[cat].append([ts,path,total,free,pct])
             else: 
                 raise NotImplementedError(f"{cat} is currently unhandled.")
     #print(csv_lines)
     write_csvs(csv_lines)
             
 def parse_arguments() -> argparse.Namespace:
-    print(f"INFO::: __parse_arguments__()")
+    #print(f"INFO::: __parse_arguments__()")
     # argument parsing
     parser = argparse.ArgumentParser()
     parser.add_argument('categories', nargs="?", help="Comma separated list of categories to prep for shipping.")
     vqd = parser.add_mutually_exclusive_group()
     vqd.add_argument('-v', '--verbose', dest='verbose', action='store_true', help="Add more output.")
-    vqd.add_argument('-q', '--quiet;', dest='quiet', action='store_true', help='Suppress all output, except errors. AKA "Cron Mode"')
+    vqd.add_argument('-q', '--quiet', dest='quiet', action='store_true', help='Suppress all output, except errors. AKA "Cron Mode"')
     vqd.add_argument('-d', '--debug', dest='debug', action='store_true', help='All the outputs.  For debugging.')
-    parser.add_argument('-l', '--logfile', dest='logfile', required=True, help='The full path to the logfile to be parseed.')
+    parser.add_argument('-l', '--logfile', dest='logfile', required=True, help='The full path to the logfile to be parsed.')
     parser.add_argument('--include-loopback', dest='include_loopback', action='store_true', default=False, help='Include the loopback interface in netwoirk statistics.  Default: False')
     return parser.parse_args()
 
