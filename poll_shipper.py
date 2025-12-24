@@ -8,6 +8,7 @@ import json
 import shutil
 from typing import List, Dict, Any, Union
 from termcolor import cprint
+from pathlib import Path
 
 COLORS = {'INFO': "grey", 'WARNING': "yellow", 'ERROR': "red", 'DEBUG': "cyan", 'GOOD': "green"}
 
@@ -38,13 +39,20 @@ def zip_files(dir_path: str, quiet: bool =False) -> None:
     if not quiet:
         print(f"Created {zipfile}.zip from directory {dir_path}")
 
-def write_csvs(csv_lines: Dict[str, str], quiet: bool =False) -> None:
+def write_csvs(csv_lines: Dict[str, Union[str, Dict[str, str]]], quiet: bool =False) -> None:
     """
     Writes the data collected from the logfile to CSVs
     """
     #print (f"INFO::: __write_csvs__(csv_lines={csv_lines}, quiet={quiet}")
     dir_path = 'csvs'
     os.makedirs(dir_path, exist_ok=True)
+    fieldnames = {
+        'cpu': ['Timestamp', 'Percent', 'Logical CPUs', 'Physical CPUs'],
+        'memory': ['Timestamp', 'Total (B)', 'Free (B)', 'Percent', 'Used (B)'],
+        'swap': ['Timestamp', 'Total', 'Free', 'Percent', 'Used'],
+        'disk': ['Timestamp', 'Path', 'Total', 'Free', 'Percent'],
+        'net_if': ['Timestamp', 'Interface Name', 'IsUp', 'MTU', 'Speed Mbps', 'IPs']
+    }
     if not quiet:
         print(f"{dir_path} ensured to exist.")
     for cat in csv_lines.keys():
@@ -60,6 +68,10 @@ def write_csvs(csv_lines: Dict[str, str], quiet: bool =False) -> None:
 DEFAULT_CATEGORIES = ['cpu', 'memory', 'swap', 'disk', 'net_if', 'net_errors']
 
 def run_categories(categories: List[str], logfile: str, include_loopback: bool = False) -> None:
+    """
+    This function does the "interesting" work in terms of processing the log data and converting it to a format
+    better suited for metrics (charting, etc.)
+    """
     print(f"INFO::: __run_categories__(categories={categories}, logfile={logfile}, include_loopback={include_loopback}")
     # filtered lines from the logfile parsed into categories
     # each category is the key in the dict, with the relevant lines comprising the values
@@ -67,12 +79,6 @@ def run_categories(categories: List[str], logfile: str, include_loopback: bool =
     # csv_lines will hold the raw csv data to be shipped to the reporting platform.
     # cav_lines[cat, comma-separated-lines]
     csv_lines = {}
-    fieldnames = {
-        'cpu': ['Percent', 'Logical CPUs', 'Physical CPUs'],
-        'memory': ['Total (B)', 'Free (B)', 'Percent', 'Used (B)'],
-        'swap': ['Total', 'Free', 'Percent', 'Used'],
-        'disk': ['Path', 'Total', 'Free', 'Percent'],
-    }
     for cat in categories:
         if cat not in csv_lines.keys():
             csv_lines[cat] = []
@@ -104,12 +110,23 @@ def run_categories(categories: List[str], logfile: str, include_loopback: bool =
                 free = parts[6].split('=')[1].strip(',')
                 pct = parts[7].split('=')[1].strip(',')
                 csv_lines[cat].append([ts,path,total,free,pct])
+            elif cat == 'net_if':
+                for ifc in parts[4:]:
+                    ifname,data = ifc.split('=')
+                    #if ifname not in csv_lines[cat].keys():
+                    #    csv_lines[cat][ifname] = {}
+                    data = json.loads(data.rstrip(','))
+                    #print(f"{ifname} == {data}")
+                    csv_lines[cat].append([ts,ifname,data['isup'],data['mtu'],data['speed_mbps'],data['ips']])
             else: 
                 raise NotImplementedError(f"{cat} is currently unhandled.")
     #print(csv_lines)
     write_csvs(csv_lines)
             
 def parse_arguments() -> argparse.Namespace:
+    """
+    Handle command line arguments
+    """
     #print(f"INFO::: __parse_arguments__()")
     # argument parsing
     parser = argparse.ArgumentParser()
@@ -119,11 +136,35 @@ def parse_arguments() -> argparse.Namespace:
     vqd.add_argument('-q', '--quiet', dest='quiet', action='store_true', help='Suppress all output, except errors. AKA "Cron Mode"')
     vqd.add_argument('-d', '--debug', dest='debug', action='store_true', help='All the outputs.  For debugging.')
     parser.add_argument('-l', '--logfile', dest='logfile', required=True, help='The full path to the logfile to be parsed.')
+    parser.add_argument('-n', '--no-clobber', dest='noclobber', required=False, help='Fails if attemping to overwrite files and/or delete things during cleanup.')
     parser.add_argument('--include-loopback', dest='include_loopback', action='store_true', default=False, help='Include the loopback interface in netwoirk statistics.  Default: False')
     return parser.parse_args()
 
+def destroy_on_filesystem(to_delete: List[str]) -> None:
+    """
+    Delete the files and folder created.
+    """
+    for obj in to_delete:
+        __path = Path(obj)
+        if os.path.isfile(__path):
+            try:
+                __path.unlink()
+            except FileNotFoundError:
+                cprint(f"Error: {__path} not found.", "red")
+            except OSError as e:
+                cprint(f"Error deleting file: {e}", "red")
+        elif os.path.isdir(__path):
+            try:
+                shutil.rmtree(__path)
+            except FileNotFoundError:
+                cprint(f"Error: {__path} not found.", "red")
+            except OSError as e:
+                cprint(f"Error deleting directory tree: {e}")
+        else:
+            cprint(f"Can't determine filesystem object type for (__path).", "yellow")
+
 def main():
-    print(f"{__name__}")
+    #print(f"{__name__}")
 
     # pretty printing for objects
     pp = pprint.PrettyPrinter(indent=4)
@@ -136,6 +177,9 @@ def main():
     else:
         cats = DEFAULT_CATEGORIES
     run_categories(cats, args.logfile, include_loopback=args.include_loopback)
+
+    if not args.noclobber:
+        destroy_on_filesystem(['./csvs/'])
 
 if __name__=='__main__':
     main()
