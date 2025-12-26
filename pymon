@@ -13,7 +13,7 @@ from subprocess import check_output
 import typing
 
 # determine if we're currently running in a VM
-def is_vm():
+def is_vm() -> bool:
 	cmdout = check_output(["dmidecode", "-s", "system-product-name"]).rstrip()
 	#cprint(cmdout, "magenta")
 	if cmdout == "VMware Virtual Platform":
@@ -25,7 +25,8 @@ def is_vm():
 
 # handle printing to screen
 # determines if color is enabled or not
-def print_c(msg: str, color_on: bool, color):
+def print_c(msg: str, color_on: bool, color: str) -> str:
+	#print(f"#### color is type {str(type(color))}")
 	if color_on and color is not None:
 		cprint(msg, color)
 	else:
@@ -43,8 +44,8 @@ def main():
 	parser = argparse.ArgumentParser(description="Monitor vital system resources and report at critical threasholds.")
 	vqd = parser.add_mutually_exclusive_group()
 	vqd.add_argument('-v', '--verbose', dest='verbose', action='store_true', default=False, help="Displays more verbose output.")
-	vqd.add_argument('-q', '--quiet', dest="quiet", required=False, action="store_true", help="Suppress all output except for errors.")
-	vqd.add_argument('-D', '--debug', dest="debug", required=False, action="store_true", help="Displays all the outputs.")
+	vqd.add_argument('-q', '--quiet', dest="quiet", action="store_true", help="Suppress all output except for errors.")
+	vqd.add_argument('-D', '--debug', dest="debug", action="store_true", help="Displays all the outputs.")
 	parser.add_argument('-o', '--opmode', dest='opmode', choices=['verbose', 'normal'], default='normal', help="normal or verbose: normal alerts at threashold while verbose alerts at runtime.")
 	parser.add_argument('--to', dest='mailto', help="to whom alert messages should be sent")
 	parser.add_argument('--from', dest='mailfrom', default=default_sender, help="the sender of the alerts; if left out, will be calculated from FQDN")
@@ -84,7 +85,7 @@ def main():
 	print_c('CPU: ', args.nocolor, 'green')
 
 	if avg >= 90.0:
-		print_c("  Average CPU Usage Percent over last 5 seconds: " + str(avg), args.nocolor,  'red')
+		print_c(f"  Average CPU Usage Percent over last 5 seconds: {str(avg)}, {args.nocolor}",  'red')
 		alertcondition['cpu'] = True
 	elif avg < 90.0 and avg >= 75.0:
 		print_c("  Average CPU Usage Percent over last 5 seconds: " + str(avg), args.nocolor,  'magenta')
