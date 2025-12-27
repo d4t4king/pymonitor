@@ -50,13 +50,9 @@ def main():
 	parser.add_argument('-o', '--opmode', dest='opmode', choices=['verbose', 'normal'], default='normal', help="normal or verbose: normal alerts at threashold while verbose alerts at runtime.")
 	parser.add_argument('--to', dest='mailto', help="to whom alert messages should be sent")
 	parser.add_argument('--from', dest='mailfrom', default=default_sender, help="the sender of the alerts; if left out, will be calculated from FQDN")
-	parser.add_argument('-nc', '--no-color', dest='nocolor', action='store_true', default=False, help="Turns off printing in color")
+	parser.add_argument('-nc', '--no-color', dest='nocolor', action='store_false', help="Turns off printing in color")
 	parser.add_argument('-s', '--smtp', dest='smtpserver', help="the smtp server to use (required)")
 	args = parser.parse_args()
-
-	# sets the color on or off dependent upon the command line options used
-	# default is to show color
-	#nocolor = args.nocolor
 
 	# verbose mode will send a message everytime the script runs
 	# normal mode will only send messages when threshold is met
