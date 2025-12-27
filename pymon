@@ -25,8 +25,9 @@ def is_vm() -> bool:
 
 # handle printing to screen
 # determines if color is enabled or not
-def print_c(msg: str, color_on: bool, color: str) -> str:
-	#print(f"#### color is type {str(type(color))}")
+def print_c(msg: str, color_on: bool, color: typing.Any | None) -> None:
+	# print(f"#### color is type {str(type(color))}")
+	print(f"#### color_on is {color_on}")
 	if color_on and color is not None:
 		cprint(msg, color)
 	else:
@@ -49,7 +50,7 @@ def main():
 	parser.add_argument('-o', '--opmode', dest='opmode', choices=['verbose', 'normal'], default='normal', help="normal or verbose: normal alerts at threashold while verbose alerts at runtime.")
 	parser.add_argument('--to', dest='mailto', help="to whom alert messages should be sent")
 	parser.add_argument('--from', dest='mailfrom', default=default_sender, help="the sender of the alerts; if left out, will be calculated from FQDN")
-	parser.add_argument('-nc', '--no-color', dest='nocolor', action='store_false', default=False, help="Turns off printing in color")
+	parser.add_argument('-nc', '--no-color', dest='nocolor', action='store_true', default=False, help="Turns off printing in color")
 	parser.add_argument('-s', '--smtp', dest='smtpserver', help="the smtp server to use (required)")
 	args = parser.parse_args()
 
@@ -85,14 +86,14 @@ def main():
 	print_c('CPU: ', args.nocolor, 'green')
 
 	if avg >= 90.0:
-		print_c(f"  Average CPU Usage Percent over last 5 seconds: {str(avg)}, {args.nocolor}",  'red')
+		print_c(f"  Average CPU Usage Percent over last 5 seconds: {str(avg)}", args.nocolor,  'red')
 		alertcondition['cpu'] = True
 	elif avg < 90.0 and avg >= 75.0:
-		print_c("  Average CPU Usage Percent over last 5 seconds: " + str(avg), args.nocolor,  'magenta')
+		print_c(f"  Average CPU Usage Percent over last 5 seconds: {str(avg)}", args.nocolor,  'magenta')
 	elif avg < 75.0 and avg >= 50.0:
-		print_c("  Average CPU Usage Percent over last 5 seconds: " + str(avg), args.nocolor,  'yellow')
+		print_c(f"  Average CPU Usage Percent over last 5 seconds:  {str(avg)}", args.nocolor,  'yellow')
 	else:
-		print("  Average CPU Usage Percent over last 5 seconds: " + str(avg))
+		print(f"  Average CPU Usage Percent over last 5 seconds: {str(avg)}")
 
 	print_c("Memory: ", args.nocolor,  "green")
 	if mem_pct >= 90.0:
