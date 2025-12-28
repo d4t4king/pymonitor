@@ -11,6 +11,46 @@ from email.mime.multipart import MIMEMultipart
 from termcolor import cprint
 from subprocess import check_output
 import typing
+import tempfile
+import errno
+
+# handle printing to screen
+# determines if color is enabled or not
+def print_c(msg: str, color_on: bool, color: typing.Any | None) -> None:
+	# print(f"#### color is type {str(type(color))}")
+	# print(f"#### color_on is {color_on}")
+	if color_on and color is not None:
+		cprint(msg, color)
+	else:
+		print(msg)
+
+def is_mount_readonly(path: str, color_on: bool) -> bool:
+	''' Determine if a given mount point is read-only.
+	:param path: The mount point to check.
+	:return: True if read-only, False if read-write.
+	'''
+	# Create a temporary file in the target directory
+	try:
+		test_file = tempfile.NamedTemporaryFile(dir=path, delete=True)
+		test_file.close()
+		return False  # writing succeeeded, not read-only
+	except OSError as e:
+		if e.errno == errno.EROFS:
+			# EROFS (Read-only file system) error
+			return True
+		elif e.errno == errno.EACCES:
+			# EACCES (Permission denied) might mean a permissions issue,
+			# not necessarily a read-only "mount", but still not writable for the user.
+			print_c(f"Permission denied to werite to {path}.  Check user permissions.", color_on, "yellow")
+			return True
+		else:
+			# Other OS errors
+			print_c(f"An unexpected OS error occurred: {e.strerror}", color_on, "red")
+			return True
+	except Exception as e:
+		# Catch-all for any other exceptions
+		print_c(f"An unexpected error occurred: {str(e)}", color_on, "red")
+		return True
 
 # determine if we're currently running in a VM
 def is_vm() -> bool:
@@ -22,16 +62,6 @@ def is_vm() -> bool:
 		# if we don't match any of the above, assume it's
 		# not a VM
 		return False
-
-# handle printing to screen
-# determines if color is enabled or not
-def print_c(msg: str, color_on: bool, color: typing.Any | None) -> None:
-	# print(f"#### color is type {str(type(color))}")
-	print(f"#### color_on is {color_on}")
-	if color_on and color is not None:
-		cprint(msg, color)
-	else:
-		print(msg)
 
 def main():
 	# Pretty printing for objects and variables
@@ -117,8 +147,18 @@ def main():
 	print_c("Filesystems: ", args.nocolor,  "green")
 	for p in sorted(fsen):
 		if fsen[p] >= 90.0:
-			print_c("  [{0:<8s}: {1:>3.2f}%]".format(p, fsen[p]), args.nocolor,  "red")
-			alertcondition['fs'] = True
+			# print(f"#### p = {p}")
+			# /snap/'s will always be 100% used, so don't color it red
+			if p.startswith('/snap'):
+				if is_mount_readonly(p, args.nocolor):
+					print_c("  [{0:<8s}: {1:>3.2f}%] (READ-ONLY)".format(p, fsen[p]), args.nocolor,  "yellow")
+				else:
+					print("  [{0:<8s}: {1:>3.2f}%]".format(p, fsen[p]))
+			elif is_mount_readonly(p, args.nocolor):
+				print_c("  [{0:<8s}: {1:>3.2f}%] (READ-ONLY)".format(p, fsen[p]), args.nocolor,  "yellow")
+			else:
+				print_c("  [{0:<8s}: {1:>3.2f}%]".format(p, fsen[p]), args.nocolor,  "red")
+				alertcondition['fs'] = True
 		elif fsen[p] < 90.0 and fsen[p] >= 75.0:
 			print_c("  [{0:<8s}: {1:>3.2f}%]".format(p, fsen[p]), args.nocolor, "magenta")
 		elif fsen[p] < 75.0 and fsen[p] >= 50.0:
