@@ -26,15 +26,9 @@ from typing import Dict, List, Any, Union
 import psutil
 import logging
 
-# COnfigure Logging
-logging.basicConfig(
-    filename='syspoll.log',
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s %(message)s'
-)
-logger = logging.getLogger(__name__)
-
 SCRIPT_NAME = os.path.basename(__file__)
+# Just checking if __file__ gives us the full path. (Which it does.)
+#print(f"#### INFO #### {__file__}")
 
 
 def ts() -> str:
@@ -163,7 +157,16 @@ def measure_bandwidth(interval: float = 1.0, ifname: str | None = None) -> Dict[
 DEFAULT_CATEGORIES = ["cpu", "memory", "swap", "disk", "net_if", "net_errors"]
 
 
-def run_categories(categories: List[str], logfile: str, quiet: bool =False, include_loopback: bool =False) -> None:
+def run_categories(categories: List[str], logfile: str ="syspoll.log", quiet: bool =False, include_loopback: bool =False) -> None:
+    # logging.basicConfig(filename=logfile)
+    # Configure Logging
+    logging.basicConfig(
+        filename=logfile,
+        level=logging.INFO,
+        format='%(asctime)s %(levelname)s %(message)s'
+    )
+    logger = logging.getLogger(__name__)
+
     for cat in categories:
         if cat == "cpu":
             if not quiet:
