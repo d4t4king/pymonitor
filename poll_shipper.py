@@ -6,6 +6,7 @@ import csv
 import os
 import json
 import shutil
+import datetime
 from typing import List, Dict, Any, Union
 from termcolor import cprint
 from pathlib import Path
@@ -16,7 +17,7 @@ def filter_logfile(logfile: str) -> Dict[str, str]:
     """
     Parses the log file and returns a dict of {category: [ lines]}
     """
-    #print(f"INFO::: __filter_logfile__(logfile={logfile}")
+    # print(f"INFO::: __filter_logfile__(logfile={logfile}")
     report_lines = {}
     if os.path.exists(logfile):
         with open(logfile, 'r') as lf:
@@ -33,7 +34,7 @@ def zip_files(dir_path: str, quiet: bool =False) -> None:
     """
     Zips up the files in the specified directory for shipping 
     """
-    #print(f"INFO::: __zip_files__(dir_path={dir_path}, quiet={quiet})")
+    # print(f"INFO::: __zip_files__(dir_path={dir_path}, quiet={quiet})")
     zipfile = 'csvs'
     shutil.make_archive(zipfile, 'zip', dir_path)
     if not quiet:
@@ -43,23 +44,29 @@ def write_csvs(csv_lines: Dict[str, Union[str, Dict[str, str]]], quiet: bool =Fa
     """
     Writes the data collected from the logfile to CSVs
     """
-    #print (f"INFO::: __write_csvs__(csv_lines={csv_lines}, quiet={quiet}")
+    # print(f"INFO::: __write_csvs__(csv_lines={csv_lines}, quiet={quiet}")
     dir_path = 'csvs'
     os.makedirs(dir_path, exist_ok=True)
+    file_write_time = int(round(datetime.datetime.now(datetime.timezone.utc).timestamp()))
+    # print(f"INFO::: File write time: {file_write_time}")
     fieldnames = {
         'cpu': ['Timestamp', 'Percent', 'Logical CPUs', 'Physical CPUs'],
         'memory': ['Timestamp', 'Total (B)', 'Free (B)', 'Percent', 'Used (B)'],
         'swap': ['Timestamp', 'Total', 'Free', 'Percent', 'Used'],
         'disk': ['Timestamp', 'Path', 'Total', 'Free', 'Percent'],
-        'net_if': ['Timestamp', 'Interface Name', 'IsUp', 'MTU', 'Speed Mbps', 'IPs']
+        'net_if': ['Timestamp', 'Interface Name', 'IsUp', 'MTU', 'Speed Mbps', 'IPs'],
+        'net_errors': ['Timestamp', 'Interface Name', 'Errors In', 'Errors Out', 'Dropped In', 'Dropped Out']
     }
     if not quiet:
         print(f"{dir_path} ensured to exist.")
     for cat in csv_lines.keys():
-        fn = f"{dir_path}/{cat}.csv"
+        fn = f"{dir_path}/{cat}_{file_write_time}.csv"
+        print(f"INFO::: csv_lines[{cat}] is of type {str(type(csv_lines[cat]))}")
         with open(fn, 'w') as csvout:
-            spamwriter = csv.writer(csvout)
+            spamwriter = csv.DictWriter(csvout, fieldnames=fieldnames[cat])
+            spamwriter.writeheader()
             for line in csv_lines[cat]:
+                # print(f"INFO::: line is type {str(type(line))}")
                 spamwriter.writerow(line)
         if not quiet:
             print(f"  [{fn}]")
@@ -72,7 +79,7 @@ def run_categories(categories: List[str], logfile: str, include_loopback: bool =
     This function does the "interesting" work in terms of processing the log data and converting it to a format
     better suited for metrics (charting, etc.)
     """
-    print(f"INFO::: __run_categories__(categories={categories}, logfile={logfile}, include_loopback={include_loopback}")
+    # print(f"INFO::: __run_categories__(categories={categories}, logfile={logfile}, include_loopback={include_loopback}")
     # filtered lines from the logfile parsed into categories
     # each category is the key in the dict, with the relevant lines comprising the values
     lines = filter_logfile(logfile)
@@ -118,6 +125,20 @@ def run_categories(categories: List[str], logfile: str, include_loopback: bool =
                     data = json.loads(data.rstrip(','))
                     #print(f"{ifname} == {data}")
                     csv_lines[cat].append([ts,ifname,data['isup'],data['mtu'],data['speed_mbps'],data['ips']])
+            elif cat == 'net_errors':
+                for ifc in parts[4:]:
+                    ifname,data = ifc.split('=')
+                    data = json.loads(data.rstrip(','))
+                    # print(f"INFO::: {ifname} == {data}")
+                    line_dict = {
+                        'Timestamp': ts,
+                        'Interface Name': ifname,
+                        'Errors In': data['errin'],
+                        'Errors Out': data['errout'],
+                        'Dropped In': data['dropin'],
+                        'Dropped Out': data['dropout']
+                    }
+                    csv_lines[cat].append(line_dict)
             else: 
                 raise NotImplementedError(f"{cat} is currently unhandled.")
     #print(csv_lines)
@@ -127,7 +148,7 @@ def parse_arguments() -> argparse.Namespace:
     """
     Handle command line arguments
     """
-    #print(f"INFO::: __parse_arguments__()")
+    # print(f"INFO::: __parse_arguments__()")
     # argument parsing
     parser = argparse.ArgumentParser()
     parser.add_argument('categories', nargs="?", help="Comma separated list of categories to prep for shipping.")
