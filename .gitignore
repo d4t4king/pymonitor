@@ -106,6 +106,9 @@ ENV/
 # skip data files and directories
 csvs/
 *.csv
+*.db
+*.sqlite
+*.sqlite3
 *.zip
 *.tar.gz
 *.tar.bz2
