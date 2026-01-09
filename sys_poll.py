@@ -253,7 +253,7 @@ def parse_args() -> argparse.Namespace:
     vqd.add_argument('-v', '--verbose', dest='verbose', action='store_false', help="Verbose mode.  Emit all output.")
     vqd.add_argument('-q', '--quiet', dest='quiet', action='store_true', help="Cron mode.  Suppress all output except errors.")
     vqd.add_argument('-d', '--debug', dest='debug', action='store_true', help="Debug mode.  Emit extra debug output.")
-    p.add_argument('-s', '-sqlite', dest='sqlite', action='store_true', help="Store output in SQLite database.")
+    p.add_argument('-s', '--sqlite', dest='sqlite', action='store_true', help="Store output in SQLite database.")
     p.add_argument(
         "--include-loopback",
         action="store_true",
@@ -268,9 +268,13 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """
+    Polls the system resources and logs the metrics based on the specified categories.
+    """
     pp = pprint.PrettyPrinter(indent=4)
 
     args = parse_args()
+
     if args.sqlite and not args.logfile:
         args.logfile = "syspoll.sqlite"
     elif not args.logfile:
